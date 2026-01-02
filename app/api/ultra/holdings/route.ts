@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHoldings } from "@/lib/jupiter/ultra";
 
+/** Get wallet token holdings for swap widget */
 export async function GET(request: NextRequest) {
   const wallet = request.nextUrl.searchParams.get("wallet");
   
@@ -16,4 +17,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch holdings" }, { status: 500 });
   }
 }
-

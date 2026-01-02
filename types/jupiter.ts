@@ -1,4 +1,11 @@
-// Token types
+// ============================================================
+// JUPITER API TYPE DEFINITIONS
+// All types match Jupiter API responses
+// https://dev.jup.ag/docs
+// ============================================================
+
+// --- Tokens API ---
+
 export interface TokenInfo {
   mint: string;
   name: string;
@@ -11,7 +18,21 @@ export interface TokenInfo {
   holders?: number;
 }
 
-// Content types (VRFD)
+// --- Price API ---
+
+export interface TokenPrice {
+  usdPrice: number;
+  decimals: number;
+  blockId: number;
+  priceChange24h: number;
+}
+
+export interface PricesResponse {
+  [mint: string]: TokenPrice;
+}
+
+// --- Content API (VRFD) ---
+
 export interface TokenContent {
   id: string;
   mint: string;
@@ -23,46 +44,6 @@ export interface TokenContent {
   status: "approved";
   createdAt: string;
   updatedAt: string;
-}
-
-// Price types
-export interface TokenPrice {
-  usdPrice: number;
-  decimals: number;
-  blockId: number;
-  priceChange24h: number;
-}
-
-// Portfolio types
-export interface PortfolioElement {
-  platformId: string;
-  platformName?: string;
-  platformImage?: string;
-  type: string;
-  label?: string;
-  value: number;
-  data: any; // Platform-specific position data
-}
-
-export interface Position {
-  mint: string;
-  amount: string;
-  value: number;
-  platform: string;
-}
-
-// API Response types
-export interface TokensSearchResponse {
-  [mint: string]: TokenInfo;
-}
-
-// Category endpoint returns same structure as search
-export interface CategoryResponse {
-  [mint: string]: TokenInfo;
-}
-
-export interface PricesResponse {
-  [mint: string]: TokenPrice;
 }
 
 export interface ContentResponse {
@@ -77,12 +58,22 @@ export interface CookingTokensResponse {
   }>;
 }
 
+// --- Portfolio API ---
+
+export interface PortfolioElement {
+  platformId: string;
+  platformName?: string;
+  platformImage?: string;
+  type: string;
+  label?: string;
+  value: number;
+  data: any; // Platform-specific data
+}
+
 export interface PortfolioResponse {
   date: number;
   owner: string;
   elements: PortfolioElement[];
   totalValue: number;
   duration?: number;
-  fetcherReports?: any[];
 }
-

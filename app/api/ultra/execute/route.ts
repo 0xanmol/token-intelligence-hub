@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { executeOrder } from "@/lib/jupiter/ultra";
 
+/** Execute signed swap transaction via Jupiter Ultra */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -14,4 +15,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

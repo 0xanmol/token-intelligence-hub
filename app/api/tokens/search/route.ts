@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchTokens } from "@/lib/jupiter/tokens";
 
-/**
- * Token search API route - needed for swap widget
- */
+/** Token search - used by swap widget and search command */
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q") || "";
   
@@ -12,7 +10,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(tokens);
   } catch (error) {
     console.error("Token search error:", error);
-    return NextResponse.json([], { status: 200 }); // Return empty on error
+    return NextResponse.json([]);
   }
 }
-

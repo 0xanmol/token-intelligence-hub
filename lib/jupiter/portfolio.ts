@@ -1,28 +1,19 @@
+/**
+ * Jupiter Portfolio API
+ * https://dev.jup.ag/docs/portfolio
+ * 
+ * Tracks wallet positions across DeFi protocols.
+ */
+
 import { jupiterFetch } from "@/lib/jupiter/client";
 import { type PortfolioResponse } from "@/types/jupiter";
 
-export async function getPositions(
-  address: string,
-  platforms?: string[]
-): Promise<PortfolioResponse> {
-  const platformsParam = platforms ? `?platforms=${platforms.join(",")}` : "";
-  const response = await jupiterFetch<PortfolioResponse>(
-    `/portfolio/v1/positions/${address}${platformsParam}`
-  );
-  
-  return response;
+/** Get all positions for a wallet */
+export async function getPositions(address: string): Promise<PortfolioResponse> {
+  return jupiterFetch<PortfolioResponse>(`/portfolio/v2/${address}`);
 }
 
-export async function getStakedJup(address: string) {
-  const response = await jupiterFetch(
-    `/portfolio/v1/staked-jup/${address}`
-  );
-  
-  return response;
-}
-
+/** Get list of supported platforms */
 export async function getPlatforms() {
-  const response = await jupiterFetch(`/portfolio/v1/platforms`);
-  return response;
+  return jupiterFetch(`/portfolio/v2/platforms`);
 }
-

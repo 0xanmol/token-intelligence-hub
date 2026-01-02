@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPositions } from "@/lib/jupiter/portfolio";
 
+/** Get wallet positions across DeFi platforms */
 export async function GET(request: NextRequest) {
   const wallet = request.nextUrl.searchParams.get("wallet");
   
@@ -16,4 +17,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch portfolio" }, { status: 500 });
   }
 }
-

@@ -1,41 +1,41 @@
+/**
+ * Jupiter Ultra API
+ * https://dev.jup.ag/docs/ultra
+ * 
+ * Ultra provides gasless swaps with MEV protection.
+ * Flow: getOrder → sign transaction → executeOrder
+ */
+
 import { jupiterFetch } from "@/lib/jupiter/client";
 
 interface OrderParams {
   inputMint: string;
   outputMint: string;
-  amount: string;
-  slippageBps?: number;
+  amount: string;       // Raw amount in smallest units
+  slippageBps?: number; // Slippage tolerance (50 = 0.5%)
+  taker?: string;       // Wallet address (required to get transaction)
 }
 
 interface OrderResponse {
-  /** Base64-encoded unsigned transaction (null if taker not provided) */
-  transaction: string | null;
-  /** Request ID to use with /execute endpoint */
-  requestId: string;
-  /** Input token amount in raw units */
+  transaction: string | null; // Base64 unsigned tx (null if no taker)
+  requestId: string;          // Use with execute endpoint
   inAmount?: string;
-  /** Output token amount in raw units */
   outAmount?: string;
-  /** Fee mint address */
-  feeMint?: string;
-  /** Fee in basis points */
-  feeBps?: number;
-  [key: string]: any;
 }
 
 interface ExecuteParams {
-  signedTransaction: string;
+  signedTransaction: string;  // Base64 signed tx
   requestId: string;
 }
 
 interface ExecuteResponse {
   signature?: string;
   status?: string;
-  [key: string]: any;
 }
 
-export async function getOrder(params: OrderParams & { taker?: string }): Promise<OrderResponse> {
-  const queryParams = new URLSearchParams({
+/** Get swap order/quote. Pass taker address to get signable transaction. */
+export async function getOrder(params: OrderParams): Promise<OrderResponse> {
+  const query = new URLSearchParams({
     inputMint: params.inputMint,
     outputMint: params.outputMint,
     amount: params.amount,
@@ -43,31 +43,18 @@ export async function getOrder(params: OrderParams & { taker?: string }): Promis
     ...(params.taker && { taker: params.taker }),
   });
   
-  const response = await jupiterFetch<OrderResponse>(
-    `/ultra/v1/order?${queryParams.toString()}`
-  );
-  
-  return response;
+  return jupiterFetch<OrderResponse>(`/ultra/v1/order?${query}`);
 }
 
+/** Execute signed swap transaction */
 export async function executeOrder(params: ExecuteParams): Promise<ExecuteResponse> {
-  const response = await jupiterFetch<ExecuteResponse>(`/ultra/v1/execute`, {
+  return jupiterFetch<ExecuteResponse>(`/ultra/v1/execute`, {
     method: "POST",
     body: JSON.stringify(params),
   });
-  
-  return response;
 }
 
+/** Get token holdings for a wallet */
 export async function getHoldings(address: string) {
-  const response = await jupiterFetch(`/ultra/v1/holdings/${address}`);
-  return response;
+  return jupiterFetch(`/ultra/v1/holdings/${address}`);
 }
-
-export async function searchTokens(query: string) {
-  const response = await jupiterFetch(
-    `/ultra/v1/search?query=${encodeURIComponent(query)}`
-  );
-  return response;
-}
-
