@@ -10,7 +10,7 @@ function truncateAddress(address: string): string {
 }
 
 export function WalletConnectButton() {
-  const { isConnected, account, disconnect } = useSolana();
+  const { isConnected, account, disconnect, walletIcon, walletName } = useSolana();
   const { setVisible } = useWalletModal();
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -62,13 +62,27 @@ export function WalletConnectButton() {
     <div className="relative" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className="px-4 py-2 rounded-full bg-white/[0.06] text-[13px] font-medium text-white/80 hover:bg-white/[0.1] hover:text-white transition-apple font-mono"
+        className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/[0.06] text-[13px] font-medium text-white/80 hover:bg-white/[0.1] hover:text-white transition-apple"
       >
-        {truncateAddress(account)}
+        {walletIcon && (
+          <img src={walletIcon} alt={walletName || "wallet"} className="size-4 rounded-sm" />
+        )}
+        <span className="font-mono">{truncateAddress(account)}</span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-zinc-900 border border-white/10 shadow-xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-52 rounded-xl bg-zinc-900 border border-white/10 shadow-xl overflow-hidden z-50">
+          {/* Wallet info header */}
+          <div className="px-4 py-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2">
+              {walletIcon && (
+                <img src={walletIcon} alt={walletName || "wallet"} className="size-5 rounded-sm" />
+              )}
+              <span className="text-sm font-medium">{walletName || "Wallet"}</span>
+            </div>
+            <p className="text-xs text-white/40 font-mono mt-1">{truncateAddress(account)}</p>
+          </div>
+          
           <button
             onClick={copyAddress}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/70 hover:bg-white/[0.06] hover:text-white transition-apple"

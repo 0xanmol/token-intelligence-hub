@@ -40,6 +40,10 @@ export function useSolana() {
     account: wallet.publicKey?.toBase58() || null,
     isConnected: wallet.connected,
     
+    // Wallet adapter info (icon, name)
+    walletIcon: wallet.wallet?.adapter.icon,
+    walletName: wallet.wallet?.adapter.name,
+    
     // Methods
     connect: wallet.connect,
     disconnect: wallet.disconnect,
