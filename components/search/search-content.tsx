@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { TokenCard } from "@/components/token/token-card";
 import { useSearchParams } from "@/hooks/use-search-params";
-import { searchTokens } from "@/lib/jupiter/tokens";
-import { getPrices } from "@/lib/jupiter/price";
 import { type TokenInfo, type PricesResponse } from "@/types/jupiter";
 
 export function SearchContent() {
@@ -27,13 +25,19 @@ export function SearchContent() {
 
     setIsLoading(true);
     try {
-      const tokensData = await searchTokens(params.query);
+      // Use API routes to keep API key server-side
+      const tokensRes = await fetch(`/api/tokens/search?q=${encodeURIComponent(params.query)}`);
+      if (!tokensRes.ok) throw new Error("Search failed");
+      const tokensData = await tokensRes.json();
       setTokens(tokensData);
 
-      const mints = tokensData.map((t) => t.mint);
+      const mints = tokensData.map((t: TokenInfo) => t.mint);
       if (mints.length > 0) {
-        const pricesData = await getPrices(mints);
-        setPrices(pricesData);
+        const pricesRes = await fetch(`/api/prices?mints=${mints.join(",")}`);
+        if (pricesRes.ok) {
+          const pricesData = await pricesRes.json();
+          setPrices(pricesData);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch tokens:", error);

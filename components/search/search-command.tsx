@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Loader2 } from "lucide-react";
-import { searchTokens } from "@/lib/jupiter/tokens";
 import { type TokenInfo } from "@/types/jupiter";
 
 export function SearchCommand() {
@@ -42,7 +41,9 @@ export function SearchCommand() {
     const search = async () => {
       setIsLoading(true);
       try {
-        const tokens = await searchTokens(query);
+        const res = await fetch(`/api/tokens/search?q=${encodeURIComponent(query)}`);
+        if (!res.ok) throw new Error("Search failed");
+        const tokens = await res.json();
         setResults(tokens.slice(0, 8));
         setSelectedIndex(0);
       } catch (err) {

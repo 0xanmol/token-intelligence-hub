@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { ArrowDown, Loader2 } from "lucide-react";
 import { useSolana } from "@/components/providers/solana-provider";
-import { getOrder, executeOrder, getHoldings } from "@/lib/jupiter/ultra";
-import { searchTokens } from "@/lib/jupiter/tokens";
 import { type TokenInfo } from "@/types/jupiter";
 import { VersionedTransaction } from "@solana/web3.js";
 import { cn } from "@/lib/utils";
@@ -46,7 +44,9 @@ export function SwapWidget({ defaultOutputMint }: SwapWidgetProps) {
 
       setIsLoadingTokens(true);
       try {
-        const holdingsResponse = await getHoldings(account) as any;
+        const holdingsRes = await fetch(`/api/ultra/holdings?wallet=${account}`);
+        if (!holdingsRes.ok) throw new Error("Failed to fetch holdings");
+        const holdingsResponse = await holdingsRes.json();
         const allHoldings: any[] = [];
         
         if (holdingsResponse?.uiAmount !== undefined) {
@@ -76,7 +76,8 @@ export function SwapWidget({ defaultOutputMint }: SwapWidgetProps) {
           
           let tokenInfos: TokenInfo[] = [];
           if (mints.length > 0) {
-            tokenInfos = await searchTokens(mints.slice(0, 20).join(","));
+            const tokensRes = await fetch(`/api/tokens/search?q=${mints.slice(0, 20).join(",")}`);
+            if (tokensRes.ok) tokenInfos = await tokensRes.json();
           }
           
           const tokensWithBalances: TokenWithBalance[] = allHoldings
@@ -124,8 +125,11 @@ export function SwapWidget({ defaultOutputMint }: SwapWidgetProps) {
     async function fetchOutputToken() {
       if (!outputMint || outputMint === inputMint) return;
       try {
-        const tokens = await searchTokens(outputMint);
-        if (tokens.length > 0) setOutputToken(tokens[0]);
+        const res = await fetch(`/api/tokens/search?q=${outputMint}`);
+        if (res.ok) {
+          const tokens = await res.json();
+          if (tokens.length > 0) setOutputToken(tokens[0]);
+        }
       } catch (err) {
         console.error("Failed to fetch output token:", err);
       }
@@ -150,12 +154,18 @@ export function SwapWidget({ defaultOutputMint }: SwapWidgetProps) {
         const inputDecimals = inputTokenInfo?.decimals || 9;
         const amountInLamports = Math.floor(parseFloat(inputAmount) * Math.pow(10, inputDecimals)).toString();
 
-        const orderResponse = await getOrder({
-          inputMint,
-          outputMint,
-          amount: amountInLamports,
-          slippageBps: 50,
+        const orderRes = await fetch("/api/ultra/order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            inputMint,
+            outputMint,
+            amount: amountInLamports,
+            slippageBps: 50,
+          }),
         });
+        if (!orderRes.ok) throw new Error("Failed to get quote");
+        const orderResponse = await orderRes.json();
 
         if (orderResponse.outAmount) {
           const outputDecimals = outputToken?.decimals || 9;
@@ -201,13 +211,19 @@ export function SwapWidget({ defaultOutputMint }: SwapWidgetProps) {
       const inputDecimals = inputTokenInfo?.decimals || 9;
       const amountInLamports = Math.floor(parseFloat(inputAmount) * Math.pow(10, inputDecimals)).toString();
 
-      const orderResponse = await getOrder({
-        inputMint,
-        outputMint,
-        amount: amountInLamports,
-        slippageBps: 50,
-        taker: account,
+      const orderRes = await fetch("/api/ultra/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inputMint,
+          outputMint,
+          amount: amountInLamports,
+          slippageBps: 50,
+          taker: account,
+        }),
       });
+      if (!orderRes.ok) throw new Error("Failed to get order");
+      const orderResponse = await orderRes.json();
 
       if (!orderResponse.transaction) {
         throw new Error("No transaction returned");
@@ -218,10 +234,16 @@ export function SwapWidget({ defaultOutputMint }: SwapWidgetProps) {
       const signedTransaction = await signTransaction(transaction);
       const signedTransactionBase64 = Buffer.from(signedTransaction.serialize()).toString('base64');
 
-      const executeResponse = await executeOrder({
-        signedTransaction: signedTransactionBase64,
-        requestId: orderResponse.requestId,
+      const executeRes = await fetch("/api/ultra/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signedTransaction: signedTransactionBase64,
+          requestId: orderResponse.requestId,
+        }),
       });
+      if (!executeRes.ok) throw new Error("Failed to execute swap");
+      const executeResponse = await executeRes.json();
 
       if (executeResponse.signature) {
         setSuccess(true);

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { ContentCard } from "@/components/content/content-card";
 import { useContentFeedParams } from "@/hooks/use-content-feed-params";
-import { getContentFeed } from "@/lib/jupiter/content";
 import { type TokenContent, type TokenInfo } from "@/types/jupiter";
 
 export function ContentFeedClient() {
@@ -22,10 +21,13 @@ export function ContentFeedClient() {
     setIsLoading(true);
     try {
       const page = parseInt(params.page) || 1;
-      const feedData = await getContentFeed(page, params.type);
-      setContent(feedData.data);
+      // Use API route to keep API key server-side
+      const res = await fetch(`/api/content?page=${page}&type=${params.type}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const feedData = await res.json();
+      setContent(feedData.data || []);
       setTokensMap(feedData.tokensMap || {});
-      setHasMore(feedData.hasMore);
+      setHasMore(feedData.hasMore || false);
     } catch (error) {
       console.error("Failed to fetch content feed:", error);
     } finally {

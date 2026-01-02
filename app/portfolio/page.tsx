@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSolana } from "@/components/providers/solana-provider";
-import { getPositions, getPlatforms } from "@/lib/jupiter/portfolio";
 import { type PortfolioElement } from "@/types/jupiter";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,7 +27,9 @@ export default function PortfolioPage() {
 
     setIsLoading(true);
     try {
-      const portfolioData = await getPositions(account);
+      const res = await fetch(`/api/portfolio?wallet=${account}`);
+      if (!res.ok) throw new Error("Failed to fetch portfolio");
+      const portfolioData = await res.json();
       const portfolioElements = portfolioData.elements || [];
       setElements(portfolioElements);
       
