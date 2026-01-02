@@ -8,10 +8,14 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+function StatSkeleton() {
+  return <div className="h-12 w-32 rounded-lg bg-white/[0.06] animate-pulse" />;
+}
+
 export default function PortfolioPage() {
   const { isConnected, account } = useSolana();
   const [elements, setElements] = useState<PortfolioElement[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [totalValue, setTotalValue] = useState(0);
   const [totalPnl, setTotalPnl] = useState(0);
 
@@ -95,24 +99,36 @@ export default function PortfolioPage() {
           <div className="flex gap-16">
             <div>
               <p className="text-sm text-white/40 mb-2">Total Value</p>
-              <p className="text-5xl font-semibold tabular-nums tracking-tight">
-                ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
+              {isLoading ? (
+                <StatSkeleton />
+              ) : (
+                <p className="text-5xl font-semibold tabular-nums tracking-tight">
+                  ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-sm text-white/40 mb-2">P&L</p>
-              <p className={cn(
-                "text-5xl font-semibold tabular-nums tracking-tight",
-                totalPnl >= 0 ? "text-[#30D158]" : "text-[#FF453A]"
-              )}>
-                {totalPnl >= 0 ? "+" : ""}{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
+              {isLoading ? (
+                <StatSkeleton />
+              ) : (
+                <p className={cn(
+                  "text-5xl font-semibold tabular-nums tracking-tight",
+                  totalPnl >= 0 ? "text-[#30D158]" : "text-[#FF453A]"
+                )}>
+                  {totalPnl >= 0 ? "+" : ""}{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              )}
             </div>
             <div>
               <p className="text-sm text-white/40 mb-2">Positions</p>
-              <p className="text-5xl font-semibold tabular-nums tracking-tight">
-                {elements.length}
-              </p>
+              {isLoading ? (
+                <StatSkeleton />
+              ) : (
+                <p className="text-5xl font-semibold tabular-nums tracking-tight">
+                  {elements.length}
+                </p>
+              )}
             </div>
           </div>
         </div>
