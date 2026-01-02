@@ -1,6 +1,5 @@
 import { jupiterFetch } from "@/lib/jupiter/client";
-import { type TokenContent, type ContentResponse, type CookingTokensResponse, type TokenInfo } from "@/types/jupiter";
-import { searchTokens } from "@/lib/jupiter/tokens";
+import { type TokenContent, type CookingTokensResponse, type TokenInfo } from "@/types/jupiter";
 
 /**
  * Jupiter Content API Client
@@ -123,53 +122,47 @@ export async function getCookingTokens() {
     `/tokens/v2/content/cooking`
   );
   
-  console.log("[Content] Cooking API raw response:", response);
-  
-  // Handle different response structures
-  if (Array.isArray(response)) {
-    return response;
-  }
-  
-  if (response && typeof response === "object" && "data" in response) {
-    return response.data;
-  }
-  
+  if (Array.isArray(response)) return response;
+  if (response && typeof response === "object" && "data" in response) return response.data;
   return [];
 }
 
 /**
  * Get content feed from trending "cooking" tokens
  * 
- * Since the feed endpoint requires a specific mint, we use the cooking
- * endpoint to get trending tokens with their content.
- * 
- * @param page - Page number (currently not supported by cooking endpoint)
- * @param type - Content type filter (currently not supported by cooking endpoint)
- * @returns Content response with trending token content
+ * Uses the cooking endpoint which returns both content AND token metadata,
+ * eliminating the need for a separate token search call.
  */
 export async function getContentFeed(page: number = 1, type?: string) {
-  // Use cooking endpoint for trending content since feed requires a specific mint
   const cookingData = await getCookingTokens();
   
-  console.log("[Content] Cooking data parsed:", cookingData);
-  console.log("[Content] First item structure:", cookingData[0]);
-  
-  // Extract all content items from cooking tokens
   const allContent: TokenContent[] = [];
+  const tokensMap: Record<string, TokenInfo> = {};
+  
   cookingData.forEach((item: any) => {
     const mint = item.mint;
     
-    // Process contents array (note: plural "contents" not "content")
+    // Extract token metadata from cooking response (no extra API call needed)
+    if (mint && !tokensMap[mint]) {
+      tokensMap[mint] = {
+        mint,
+        name: item.name || item.symbol || mint.slice(0, 8),
+        symbol: item.symbol || mint.slice(0, 4),
+        decimals: item.decimals || 9,
+        logoURI: item.logoURI || item.icon || item.image,
+      };
+    }
+    
+    // Process contents array
     if (item.contents && Array.isArray(item.contents)) {
       item.contents.forEach((contentItem: any) => {
         const contentType = contentItem.contentType || contentItem.type || "text";
         const contentText = contentItem.content || contentItem.text || "";
         
-        // Filter by type if specified AND skip empty content
-        if ((!type || type === "all" || contentType === type) && contentText.trim().length > 0) {
+        if ((!type || type === "all" || contentType === type) && contentText.trim()) {
           allContent.push({
             id: contentItem.contentId || contentItem.id || `content-${Math.random()}`,
-            mint: mint,
+            mint,
             type: contentType,
             content: contentText,
             submittedBy: typeof contentItem.submittedBy === 'object' 
@@ -185,16 +178,15 @@ export async function getContentFeed(page: number = 1, type?: string) {
       });
     }
     
-    // Also include tokenSummary as a summary content item (only if it has content)
+    // Token summary
     if (item.tokenSummary && (!type || type === "all" || type === "summary")) {
-      const summaryContent = item.tokenSummary.summaryFull || item.tokenSummary.summaryShort || "";
-      // Only add if there's actual content
-      if (summaryContent.trim().length > 0) {
+      const content = item.tokenSummary.summaryFull || item.tokenSummary.summaryShort || "";
+      if (content.trim()) {
         allContent.push({
           id: `${mint}-token-summary`,
-          mint: mint,
+          mint,
           type: "summary",
-          content: summaryContent,
+          content,
           submittedBy: "jupiter",
           citations: item.tokenSummary.citations || [],
           status: "approved",
@@ -204,16 +196,15 @@ export async function getContentFeed(page: number = 1, type?: string) {
       }
     }
     
-    // Also include newsSummary as a news content item (only if it has content)
+    // News summary
     if (item.newsSummary && (!type || type === "all" || type === "news")) {
-      const newsContent = item.newsSummary.summaryFull || item.newsSummary.summaryShort || "";
-      // Only add if there's actual content
-      if (newsContent.trim().length > 0) {
+      const content = item.newsSummary.summaryFull || item.newsSummary.summaryShort || "";
+      if (content.trim()) {
         allContent.push({
           id: `${mint}-news-summary`,
-          mint: mint,
+          mint,
           type: "news",
-          content: newsContent,
+          content,
           submittedBy: "jupiter",
           citations: item.newsSummary.citations || [],
           status: "approved",
@@ -224,34 +215,14 @@ export async function getContentFeed(page: number = 1, type?: string) {
     }
   });
   
-  console.log("[Content] Total content items extracted:", allContent.length);
-  
-  // Simple pagination (50 items per page)
+  // Paginate
   const itemsPerPage = 50;
   const startIndex = (page - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedContent = allContent.slice(startIndex, endIndex);
-  
-  // Fetch token metadata for unique mints in this page
-  const uniqueMints = [...new Set(paginatedContent.map(c => c.mint))];
-  let tokensMap: Record<string, TokenInfo> = {};
-  
-  if (uniqueMints.length > 0) {
-    try {
-      // Search for tokens - this returns token info with name, symbol, logo
-      const tokenResults = await searchTokens(uniqueMints.join(","));
-      tokensMap = tokenResults.reduce((acc, token) => {
-        acc[token.mint] = token;
-        return acc;
-      }, {} as Record<string, TokenInfo>);
-    } catch (error) {
-      console.error("[Content] Failed to fetch token metadata:", error);
-    }
-  }
+  const paginatedContent = allContent.slice(startIndex, startIndex + itemsPerPage);
   
   return {
     data: paginatedContent,
-    hasMore: endIndex < allContent.length,
+    hasMore: startIndex + itemsPerPage < allContent.length,
     tokensMap,
   };
 }
