@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
+import { Connection, VersionedTransaction, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 
 // USDC mint address on Solana mainnet
-const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+const USDC_MINT_STRING = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 // =============================================================================
 // Types
@@ -108,7 +110,7 @@ export function PMTradeDialog({
     }
   }, [open, initialSide]);
 
-  // Fetch USDC balance via Jupiter Ultra Holdings API
+  // Fetch USDC balance - try Jupiter API first, fallback to RPC
   useEffect(() => {
     async function fetchBalance() {
       if (!publicKey || !open) {
@@ -118,15 +120,25 @@ export function PMTradeDialog({
 
       setIsLoadingBalance(true);
       try {
+        // Try Jupiter Ultra Holdings API first
         const res = await fetch(`/api/ultra/holdings?wallet=${publicKey.toBase58()}`);
-        if (!res.ok) throw new Error("Failed to fetch holdings");
+        if (res.ok) {
+          const holdings = await res.json();
+          const usdcHolding = holdings.tokens?.[USDC_MINT_STRING];
+          if (usdcHolding) {
+            const balance = usdcHolding.uiAmount ?? parseFloat(usdcHolding.uiAmountString || "0");
+            setUsdcBalance(balance);
+            return;
+          }
+        }
         
-        const holdings = await res.json();
-        // Get USDC balance from tokens object
-        const usdcHolding = holdings.tokens?.[USDC_MINT];
-        setUsdcBalance(usdcHolding?.uiAmount ?? 0);
+        // Fallback to direct RPC call
+        const connection = new Connection(RPC_URL);
+        const ata = await getAssociatedTokenAddress(USDC_MINT, publicKey);
+        const balance = await connection.getTokenAccountBalance(ata);
+        setUsdcBalance(parseFloat(balance.value.uiAmountString || "0"));
       } catch {
-        // User might not have any holdings
+        // User might not have a USDC account yet
         setUsdcBalance(0);
       } finally {
         setIsLoadingBalance(false);

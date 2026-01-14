@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
   
   try {
     const holdings = await getHoldings(wallet);
+    // Log for debugging balance issues
+    console.log("Holdings for", wallet.slice(0, 8) + "...", JSON.stringify(holdings, null, 2).slice(0, 500));
     return NextResponse.json(holdings);
   } catch (error) {
     console.error("Holdings error:", error);
