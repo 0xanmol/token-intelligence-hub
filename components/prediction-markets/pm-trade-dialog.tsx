@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
+import { Connection, VersionedTransaction, PublicKey } from "@solana/web3.js";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,9 @@ import {
   dollarsToContracts,
 } from "@/lib/jupiter/prediction-markets";
 import { cn } from "@/lib/utils";
+
+// USDC mint address on Solana mainnet
+const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
 
 // =============================================================================
 // Types
@@ -94,12 +98,42 @@ export function PMTradeDialog({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Balance state
+  const [usdcBalance, setUsdcBalance] = useState<number | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+
   // Reset side when dialog opens with new initialSide
   useEffect(() => {
     if (open) {
       setSide(initialSide);
     }
   }, [open, initialSide]);
+
+  // Fetch USDC balance when wallet is connected and dialog opens
+  useEffect(() => {
+    async function fetchBalance() {
+      if (!publicKey || !open) {
+        setUsdcBalance(null);
+        return;
+      }
+
+      setIsLoadingBalance(true);
+      try {
+        const connection = new Connection(RPC_URL);
+        const ata = await getAssociatedTokenAddress(USDC_MINT, publicKey);
+        const balance = await connection.getTokenAccountBalance(ata);
+        // USDC has 6 decimals
+        setUsdcBalance(parseFloat(balance.value.uiAmountString || "0"));
+      } catch {
+        // User might not have a USDC account yet
+        setUsdcBalance(0);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    }
+
+    fetchBalance();
+  }, [publicKey, open]);
 
   // Calculate prices and payouts
   const yesPrice = market.pricing.buyYesPriceUsd || 0;
@@ -250,9 +284,25 @@ export function PMTradeDialog({
 
           {/* Amount Input */}
           <div>
-            <label className="text-sm text-white/50 mb-2 block">
-              Amount (USD)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-white/50">
+                Amount (USD)
+              </label>
+              {connected && (
+                <div className="text-sm text-white/50">
+                  {isLoadingBalance ? (
+                    <span className="text-white/30">Loading...</span>
+                  ) : usdcBalance !== null ? (
+                    <span>
+                      Balance:{" "}
+                      <span className="text-white/70 font-medium tabular-nums">
+                        ${usdcBalance.toFixed(2)}
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
+              )}
+            </div>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">
                 $
@@ -262,17 +312,39 @@ export function PMTradeDialog({
                 placeholder="10.00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="pl-8 h-12 text-lg bg-white/5 border-white/10 focus:border-white/20"
+                className={cn(
+                  "pl-8 h-12 text-lg bg-white/5 border-white/10 focus:border-white/20",
+                  usdcBalance !== null && dollarAmount > usdcBalance && "border-[#FF453A]/50 focus:border-[#FF453A]"
+                )}
                 min="1"
                 step="1"
               />
+              {usdcBalance !== null && usdcBalance > 0 && (
+                <button
+                  onClick={() => setAmount(Math.floor(usdcBalance).toString())}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-white/40 hover:text-white/70 transition-colors px-2 py-1 rounded bg-white/5 hover:bg-white/10"
+                >
+                  Max
+                </button>
+              )}
             </div>
+            {usdcBalance !== null && dollarAmount > usdcBalance && (
+              <p className="text-xs text-[#FF453A] mt-1">
+                Insufficient balance
+              </p>
+            )}
             <div className="flex gap-2 mt-2">
               {QUICK_AMOUNTS.map((val) => (
                 <button
                   key={val}
                   onClick={() => setAmount(val.toString())}
-                  className="flex-1 py-1.5 text-xs text-white/50 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                  className={cn(
+                    "flex-1 py-1.5 text-xs bg-white/5 rounded-lg hover:bg-white/10 transition-colors",
+                    usdcBalance !== null && val > usdcBalance
+                      ? "text-white/20 cursor-not-allowed"
+                      : "text-white/50"
+                  )}
+                  disabled={usdcBalance !== null && val > usdcBalance}
                 >
                   ${val}
                 </button>
@@ -342,7 +414,12 @@ export function PMTradeDialog({
           ) : (
             <Button
               onClick={handleTrade}
-              disabled={isLoading || dollarAmount <= 0 || success}
+              disabled={
+                isLoading ||
+                dollarAmount <= 0 ||
+                success ||
+                (usdcBalance !== null && dollarAmount > usdcBalance)
+              }
               className={cn(
                 "w-full h-12 text-base font-medium transition-all",
                 side === "yes"
@@ -357,6 +434,8 @@ export function PMTradeDialog({
                 </span>
               ) : success ? (
                 "Done!"
+              ) : usdcBalance !== null && dollarAmount > usdcBalance ? (
+                "Insufficient Balance"
               ) : (
                 `Buy ${side === "yes" ? "Yes" : "No"} for $${dollarAmount.toFixed(2)}`
               )}
