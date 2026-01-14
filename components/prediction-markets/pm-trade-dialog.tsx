@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, VersionedTransaction, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddress } from "@solana/spl-token";
+import { Connection, VersionedTransaction } from "@solana/web3.js";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // USDC mint address on Solana mainnet
-const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+const USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 // =============================================================================
 // Types
@@ -109,7 +108,7 @@ export function PMTradeDialog({
     }
   }, [open, initialSide]);
 
-  // Fetch USDC balance when wallet is connected and dialog opens
+  // Fetch USDC balance via Jupiter Ultra Holdings API
   useEffect(() => {
     async function fetchBalance() {
       if (!publicKey || !open) {
@@ -119,13 +118,15 @@ export function PMTradeDialog({
 
       setIsLoadingBalance(true);
       try {
-        const connection = new Connection(RPC_URL);
-        const ata = await getAssociatedTokenAddress(USDC_MINT, publicKey);
-        const balance = await connection.getTokenAccountBalance(ata);
-        // USDC has 6 decimals
-        setUsdcBalance(parseFloat(balance.value.uiAmountString || "0"));
+        const res = await fetch(`/api/ultra/holdings?wallet=${publicKey.toBase58()}`);
+        if (!res.ok) throw new Error("Failed to fetch holdings");
+        
+        const holdings = await res.json();
+        // Get USDC balance from tokens object
+        const usdcHolding = holdings.tokens?.[USDC_MINT];
+        setUsdcBalance(usdcHolding?.uiAmount ?? 0);
       } catch {
-        // User might not have a USDC account yet
+        // User might not have any holdings
         setUsdcBalance(0);
       } finally {
         setIsLoadingBalance(false);
