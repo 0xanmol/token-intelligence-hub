@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   getProbability,
   formatPMVolume,
@@ -138,10 +139,13 @@ export function PMEventCard({ event }: PMEventCardProps) {
           <div className="flex items-start gap-3">
             {event.metadata.imageUrl && (
               <div className="relative flex-shrink-0">
-                <img
+                <Image
                   src={event.metadata.imageUrl}
                   alt=""
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-xl object-cover"
+                  unoptimized
                 />
                 <JupiterBadge />
               </div>

@@ -215,7 +215,7 @@ export function PMTradeDialog({
     } finally {
       setIsLoading(false);
     }
-  }, [publicKey, signTransaction, market.marketId, side, contracts, dollarAmount]);
+  }, [publicKey, signTransaction, market.marketId, side, contracts, dollarAmount, selectedPrice]);
 
   const handleClose = () => {
     setAmount("");

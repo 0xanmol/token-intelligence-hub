@@ -49,9 +49,13 @@ export function PMAnnouncementBar({ hotMarket }: PMAnnouncementBarProps) {
     }
     
     // Show the bar with a slight delay for smooth entry
-    setDismissed(false);
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    return () => clearTimeout(timer);
+    // Use setTimeout to avoid synchronous setState in effect
+    const showTimer = setTimeout(() => setDismissed(false), 0);
+    const visibleTimer = setTimeout(() => setIsVisible(true), 100);
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(visibleTimer);
+    };
   }, []);
 
   const handleDismiss = () => {
