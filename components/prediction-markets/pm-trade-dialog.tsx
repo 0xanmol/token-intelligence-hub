@@ -134,6 +134,7 @@ export function PMTradeDialog({
           isYes: side === "yes",
           isBuy: true,
           contracts,
+          maxBuyPriceUsd: selectedPrice, // Required for buy orders - price per contract in micro-dollars
           depositAmount: Math.ceil(dollarAmount * 1_000_000),
         }),
       });
