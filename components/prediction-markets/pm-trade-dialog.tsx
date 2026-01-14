@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Connection, VersionedTransaction, PublicKey } from "@solana/web3.js";
 import { getAssociatedTokenAddress } from "@solana/spl-token";
+import confetti from "canvas-confetti";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,45 @@ function LoadingSpinner() {
       />
     </svg>
   );
+}
+
+/** Fire celebratory confetti on successful transaction */
+function fireConfetti() {
+  const duration = 3000;
+  const end = Date.now() + duration;
+
+  const colors = ["#30D158", "#0A84FF", "#FFD60A", "#FF453A", "#BF5AF2"];
+
+  (function frame() {
+    confetti({
+      particleCount: 3,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.6 },
+      colors,
+    });
+    confetti({
+      particleCount: 3,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.6 },
+      colors,
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  })();
+
+  // Also fire a burst from center
+  setTimeout(() => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors,
+    });
+  }, 200);
 }
 
 // =============================================================================
@@ -227,6 +267,7 @@ export function PMTradeDialog({
 
       setSuccess(true);
       setAmount("");
+      fireConfetti(); // 🎉 Celebrate!
     } catch (err) {
       console.error("Trade error:", err);
       setError(err instanceof Error ? err.message : "Trade failed");
