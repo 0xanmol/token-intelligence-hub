@@ -208,10 +208,11 @@ export function PMTradeDialog({
       const signedTx = await signTransaction(transaction);
 
       // Step 3: Send to Solana
-      const connection = new Connection(RPC_URL);
+      // Note: Public RPC may block transactions - use a proper RPC like Helius
+      const connection = new Connection(RPC_URL, "confirmed");
       const signature = await connection.sendRawTransaction(
         signedTx.serialize(),
-        { skipPreflight: false, maxRetries: 3 }
+        { skipPreflight: true, maxRetries: 5 }
       );
 
       // Step 4: Wait for confirmation
