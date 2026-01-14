@@ -124,10 +124,15 @@ export function PMTradeDialog({
         const res = await fetch(`/api/ultra/holdings?wallet=${publicKey.toBase58()}`);
         if (res.ok) {
           const holdings = await res.json();
-          const usdcHolding = holdings.tokens?.[USDC_MINT_STRING];
-          if (usdcHolding) {
-            const balance = usdcHolding.uiAmount ?? parseFloat(usdcHolding.uiAmountString || "0");
-            setUsdcBalance(balance);
+          // Holdings API returns an array of accounts per mint
+          const usdcAccounts = holdings.tokens?.[USDC_MINT_STRING];
+          if (Array.isArray(usdcAccounts) && usdcAccounts.length > 0) {
+            // Sum up all USDC accounts (usually just one)
+            const totalBalance = usdcAccounts.reduce(
+              (sum: number, acc: { uiAmount?: number }) => sum + (acc.uiAmount || 0),
+              0
+            );
+            setUsdcBalance(totalBalance);
             return;
           }
         }
